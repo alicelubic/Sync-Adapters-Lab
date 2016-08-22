@@ -1,6 +1,5 @@
 package drewmahrt.generalassemb.ly.investingportfolio;
 
-import android.animation.ObjectAnimator;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -8,7 +7,9 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.provider.BaseColumns;
 
-public class MyDBHandler extends SQLiteOpenHelper {
+import java.util.ArrayList;
+
+public class MyDBHelper extends SQLiteOpenHelper {
   private static final Object mLock = new Object();
   private static final int DATABASE_VERSION = 1;
   private static final String DATABASE_NAME = "portfolioDB.db";
@@ -21,16 +22,16 @@ public class MyDBHandler extends SQLiteOpenHelper {
   public static final String COLUMN_EXCHANGE = StockPortfolioContract.Stocks.COLUMN_EXCHANGE;
   public static final String COLUMN_PRICE = StockPortfolioContract.Stocks.COLUMN_PRICE;
 
-  private static MyDBHandler mInstance;
+  private static MyDBHelper mInstance;
 
-  public static MyDBHandler getInstance(Context context){
+  public static MyDBHelper getInstance(Context context){
     if(mInstance == null){
-      mInstance = new MyDBHandler(context);
+      mInstance = new MyDBHelper(context);
     }
     return mInstance;
   }
 
-  private MyDBHandler(Context context) {
+  private MyDBHelper(Context context) {
     super(context.getApplicationContext(), DATABASE_NAME, null, DATABASE_VERSION);
   }
 
@@ -98,5 +99,20 @@ public class MyDBHandler extends SQLiteOpenHelper {
 
       return rowsUpdated;
     }
+  }
+
+  public ArrayList<String> getAllStockSymbols(){
+      SQLiteDatabase db = getReadableDatabase();
+      ArrayList<String> symbols=null;
+      Cursor cursor = db.query(TABLE_STOCKS,new String[]{COLUMN_STOCK_SYMBOL},null,null,null,null,null);
+      if(cursor.moveToFirst()){
+          symbols = new ArrayList<>();
+          while(!cursor.isAfterLast()){
+              symbols.add(cursor.getString(cursor.getColumnIndex(COLUMN_STOCK_SYMBOL)));
+
+              cursor.moveToNext();
+          }
+      }
+      return symbols;
   }
 }

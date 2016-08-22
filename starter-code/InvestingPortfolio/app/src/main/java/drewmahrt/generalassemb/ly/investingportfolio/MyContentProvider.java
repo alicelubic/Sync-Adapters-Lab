@@ -5,14 +5,13 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.UriMatcher;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
 public class MyContentProvider extends ContentProvider {
   private static final String TAG = "MyContentProvider";
-  private MyDBHandler myDB;
+  private MyDBHelper myDB;
   private static final String AUTHORITY = StockPortfolioContract.AUTHORITY;
   private static final String STOCKS_TABLE = StockPortfolioContract.Stocks.TABLE_STOCKS;
   public static final Uri CONTENT_URI = StockPortfolioContract.Stocks.CONTENT_URI;
@@ -31,7 +30,7 @@ public class MyContentProvider extends ContentProvider {
 
   @Override
   public boolean onCreate() {
-    myDB = MyDBHandler.getInstance(getContext());
+    myDB = MyDBHelper.getInstance(getContext());
     return false;
   }
 

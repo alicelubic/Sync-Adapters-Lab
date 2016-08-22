@@ -1,5 +1,7 @@
 package drewmahrt.generalassemb.ly.investingportfolio;
 
+import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -43,13 +45,21 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>{
     private static final String TAG = "MainActivity";
     public static final Uri CONTENT_URI = StockPortfolioContract.Stocks.CONTENT_URI;
+    private static final String AUTHORITY = StockPortfolioContract.AUTHORITY;
     public static final int LOADER_STOCK = 0;
+    public static final String ACCOUNT_TYPE = "example.com";
+    public static final String ACCOUNT = "default_account";
 
     ListView mPortfolioListView;
     CursorAdapter mCursorAdapter;
+    Account mAccount;
+    ContentResolver mContentResolver;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +69,8 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         setSupportActionBar(toolbar);
 
         mPortfolioListView = (ListView)findViewById(R.id.portfolio_list);
+        mContentResolver = getContentResolver();
+        mAccount = createSyncAccount(this);
 
         mCursorAdapter = new CursorAdapter(this,null,0) {
             @Override
@@ -74,18 +86,22 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
                 String name = cursor.getString(cursor.getColumnIndex("stockname"));
                 String symbol = cursor.getString(cursor.getColumnIndex("symbol"));
-                String quantity = cursor.getString(cursor.getColumnIndex("quantity"));
+//                String quantity = cursor.getString(cursor.getColumnIndex("quantity"));
+                String price = cursor.getString(cursor.getColumnIndex("price"));
 
+//
+//                text1.setText(name+" ("+symbol+")");
+//                text2.setText("Quantity of stocks: "+quantity);
 
                 text1.setText(name+" ("+symbol+")");
-                text2.setText("Quantity of stocks: "+quantity);
+                text2.setText("$"+price);
             }
         };
 
         mPortfolioListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                getContentResolver().delete(ContentUris.withAppendedId(CONTENT_URI,id),null,null);
+               mContentResolver.delete(ContentUris.withAppendedId(CONTENT_URI,id),null,null);
                 return false;
             }
         });
@@ -100,6 +116,19 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                 createDialog();
             }
         });
+
+
+
+        Bundle bundle= new Bundle();
+        ArrayList<String> symbols = MyDBHelper.getInstance(this).getAllStockSymbols();
+        if(symbols!=null&& !symbols.isEmpty()){
+            bundle.putStringArrayList("stock_symbols", symbols);
+        }
+
+
+        ContentResolver.setSyncAutomatically(mAccount, AUTHORITY, true);
+        ContentResolver.addPeriodicSync(mAccount,AUTHORITY,bundle,60);
+
     }
 
     public void retrieveStock(final String symbol, final String quantity){
@@ -149,14 +178,13 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                     public void onResponse(JSONArray response) {
                         Log.d(MainActivity.class.getName(),"Response2: "+response.toString());
                         try {
-                            ContentResolver contentResolver = getContentResolver();
                             String exchange = ((JSONObject)response.get(0)).getString("Exchange");
                             ContentValues values = new ContentValues();
                             values.put("symbol",symbol);
                             values.put("quantity",quantity);
                             values.put("stockname",name);
                             values.put("exchange", exchange);
-                            contentResolver.insert(CONTENT_URI, values);
+                            mContentResolver.insert(CONTENT_URI, values);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -232,5 +260,42 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         mCursorAdapter.changeCursor(null);
+    }
+
+
+
+    /**
+     * Create a new dummy account for the sync adapter
+     *
+     * @param context The application context
+     */
+
+    //this is copied from google's page for stub content provider
+    public static Account createSyncAccount(Context context) {
+        // Create the account type and default account
+        Account newAccount = new Account(
+                ACCOUNT, ACCOUNT_TYPE);
+        // Get an instance of the Android account manager
+        AccountManager accountManager =
+                (AccountManager) context.getSystemService(
+                        ACCOUNT_SERVICE);
+        /*
+         * Add the account and account type, no password or user data
+         * If successful, return the Account object, otherwise report an error.
+         */
+        if (accountManager.addAccountExplicitly(newAccount, null, null)) {
+            /*
+             * If you don't set android:syncable="true" in
+             * in your <provider> element in the manifest,
+             * then call context.setIsSyncable(account, AUTHORITY, 1)
+             * here.
+             */
+        } else {
+            /*
+             * The account exists or some other error occurred. Log this, report it,
+             * or handle it internally.
+             */
+        }
+        return newAccount;
     }
 }
